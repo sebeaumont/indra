@@ -71,15 +71,23 @@ module Mobius = struct
 
   exception Singular
 
-  (* smart constructor: check for singularities and normalize so det = 1
-     so these then can be elements of the PSL(2,C) or Kleinian group *)
+  (* convenience constructor *)
+  let matrix a b c d = { a; b; c; d }
 
-  let transformation a b c d =
-    let det = sub (mul a d) (mul b c) in
+  (* check for singularities and normalize so det = 1 so reult can be an
+     element of the PSL(2,C) or Kleinian group *)
+
+  let kleinian m =
+    let det = sub (mul m.a m.d) (mul m.b m.c) in
     if det = zero then raise Singular
     else
       let uniter = sqrt det in
-      { a = div a uniter; b = div b uniter; c = div c uniter; d = div d uniter }
+      {
+        a = div m.a uniter;
+        b = div m.b uniter;
+        c = div m.c uniter;
+        d = div m.d uniter;
+      }
 
   (* composition is "matrix" multiplication *)
 
@@ -94,6 +102,21 @@ module Mobius = struct
   let trace m = add m.a m.d
   let inverse m = { m with a = neg m.d; d = neg m.a }
   let transform_point m z = div (add (mul m.a z) m.b) (add (mul m.c z) m.d)
+
+  (*  general fixed point formula *)
+
+  let fixed_points m =
+    let four = { re = 4.; im = Float.zero } in
+    let dma = sub m.d m.a in
+    let dma2 = mul dma dma in
+    let bc4 = mul four (mul m.b m.c) in
+    let discr = sqrt (add dma2 bc4) in
+    let a_d = sub m.a m.d in
+    let two = { re = 2.; im = Float.zero } in
+    let two_c = mul two m.c in
+    let r1 = divx (sub a_d discr) two_c in
+    let r2 = divx (add a_d discr) two_c in
+    (r1, r2)
 end
 
 (* -------------------------------------------------------------------------- *)
