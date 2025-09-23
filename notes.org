@@ -1,0 +1,15 @@
+* Notes
+
+** Complex Numbers 
+Can't do this any more or use Owl since it is tied to the standard complex
+number module in stdlib which is inaadequate for our purposes.
+
+#+begin_src ocaml
+   module Matrix = struct
+   open Mobius
+   module M = Owl.Dense.Matrix.Z
+
+   let as_matrix m = M.of_array [| m.a; m.b; m.c; m.d |] 2 2
+   let matrix_compose mat1 mat2 = M.(mat1 *@ mat2)
+   end
+#+end_src

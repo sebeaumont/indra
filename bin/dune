@@ -1,0 +1,6 @@
+(executable
+ (public_name indra)
+ (name main)
+ (libraries indra)
+ (preprocess (pps ppx_deriving.show)))
+
