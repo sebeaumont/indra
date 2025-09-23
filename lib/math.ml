@@ -1,6 +1,8 @@
 (* Math for Indra's pearls and all things to be found in the complex plane
    Copyleft 2025 Simon Beaumont, Newport, England *)
 
+(* -------------------------------------------------------------------------- *)
+
 module ComplexExt = struct
   (** Complex numbers extended. We extend the complex numbers to include the
       point at infinity and provide extended arithmetic. *)
