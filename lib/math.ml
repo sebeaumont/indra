@@ -3,9 +3,9 @@
 
 module ComplexExt = struct
   (** Complex numbers extended. We extend the complex numbers to include the
-      point at infinity and adjust our arithmetic accordingly. *)
+      point at infinity and provide extended arithmetic. *)
 
-  (* using to the following
+  (* using the following
       rules:
 
       | a + ∞ = ∞ 
@@ -23,7 +23,30 @@ module ComplexExt = struct
 
   include Complex
 
-  let infinity = { re = Float.infinity; im = Float.nan }
+  (* nota bene a Float.nan cannot be compared as number so... *)
+  let infinity = { re = Float.infinity; im = Float.zero }
+  let nan = { re = Float.nan; im = Float.nan }
+
+  (* extended operations *)
+  let divx a b =
+    if a <> zero then if b <> zero then div a b else infinity
+    else if b = zero then nan
+    else zero
+
+  let addx a b =
+    if a = infinity && b = infinity then nan
+    else if a = infinity || b = infinity then infinity
+    else add a b
+
+  let subx a b =
+    if a = infinity && b = infinity then nan
+    else if a = infinity || b = infinity then infinity
+    else sub a b
+
+  let mulx a b =
+    if a <> zero then if b = infinity then infinity else mul a b
+    else if b = infinity then nan
+    else mul a b
 end
 
 (* -------------------------------------------------------------------------- *)
