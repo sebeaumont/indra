@@ -1,9 +1,8 @@
 open Indra.Math
 module CC = ComplexExt
 
-(* contorted test as nan's are not comparable as numbers *)
-let is_nan (z : CC.t) =
-  string_of_float z.re = "nan" && string_of_float z.re = "nan"
+(* this is how we define ComplexExt.nan *)
+let is_nan (z : CC.t) = Float.is_nan z.re && Float.is_nan z.re
 
 (* the most basic tests ever *)
 let () =

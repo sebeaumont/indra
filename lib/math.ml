@@ -25,7 +25,7 @@ module ComplexExt = struct
 
   include Complex
 
-  (* nota bene a Float.nan cannot be compared as number so... *)
+  (* nota bene a Float.nan cannot be compared as a number *)
   let infinity = { re = Float.infinity; im = Float.zero }
   let nan = { re = Float.nan; im = Float.nan }
 
@@ -56,6 +56,7 @@ end
 module Mobius = struct
   (** Mobius transformations using the extended complex plane *)
 
+  (* should we just use the extended arithmetic everywhere? *)
   open ComplexExt
 
   (* representation of a Mobius tranformation *)
@@ -71,16 +72,17 @@ module Mobius = struct
 
   exception Singular
 
-  (* convenience constructor *)
+  (* convenience constructor apply normalisation? *)
   let matrix a b c d = { a; b; c; d }
 
-  (* check for singularities and normalize so det = 1 so reult can be an
-     element of the PSL(2,C) or Kleinian group *)
+  (* check for singularity and normalise so det = 1 and an element of
+     the PSL(2,C) Kleinian group *)
 
-  let kleinian m =
+  let normalise m =
     let det = sub (mul m.a m.d) (mul m.b m.c) in
     if det = zero then raise Singular
     else
+      (* could be -ve or +ve and hence special *)
       let uniter = sqrt det in
       {
         a = div m.a uniter;
@@ -101,9 +103,16 @@ module Mobius = struct
 
   let trace m = add m.a m.d
   let inverse m = { m with a = neg m.d; d = neg m.a }
-  let transform_point m z = div (add (mul m.a z) m.b) (add (mul m.c z) m.d)
 
-  (*  general fixed point formula *)
+  (* need another look at this w.r.t extended arithmetic  *)
+  let transform_point m z = div (add (mul m.a z) m.b) (add (mul m.c z) m.d)
+  let identity = matrix one zero zero one
+  let one_over_z = matrix zero one one zero
+
+  (* sign is irrelevant in special group *)
+  let is_normal m = norm2 (determinant m) = Float.one
+
+  (*  general fixed point formula - can simplify if assumed normal *)
 
   let fixed_points m =
     let four = { re = 4.; im = Float.zero } in
