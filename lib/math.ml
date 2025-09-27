@@ -21,9 +21,15 @@ module ComplexExt = struct
       | 0 / 0 = nan
       | ∞ / ∞ = nan
 
-      Complex.infinity has infinite magnitude and undefined phase. *)
+      Complex.infinity has infinite magnitude and undefined phase.
+   *)
 
   include Complex
+
+  let pp ppf { re; im } = Format.fprintf ppf "(%f,%fi)" re im
+
+  (* this is how we define ComplexExt.nan *)
+  let is_nan (z : Complex.t) = Float.is_nan z.re && Float.is_nan z.re
 
   (* nota bene a Float.nan cannot be compared as a number *)
   let infinity = { re = Float.infinity; im = Float.zero }
@@ -79,7 +85,7 @@ module Mobius = struct
      the PSL(2,C) Kleinian group *)
 
   let normalise m =
-    let det = sub (mul m.a m.d) (mul m.b m.c) in
+    let det = determinant m in
     if det = zero then raise Singular
     else
       (* could be -ve or +ve and hence special *)
@@ -90,6 +96,9 @@ module Mobius = struct
         c = div m.c uniter;
         d = div m.d uniter;
       }
+
+  (* assumed to have  det 1 from here on *)
+  let map a b c d = matrix a b c d |> normalise
 
   (* composition is "matrix" multiplication *)
 
@@ -105,12 +114,23 @@ module Mobius = struct
   let inverse m = { m with a = neg m.d; d = neg m.a }
 
   (* need another look at this w.r.t extended arithmetic  *)
-  let transform_point m z = div (add (mul m.a z) m.b) (add (mul m.c z) m.d)
+  let transform_point m z =
+    if z = infinity then divx m.a m.c
+    else divx (add (mul m.a z) m.b) (add (mul m.c z) m.d)
+
+  (* useful transfoarmations *)
   let identity = matrix one zero zero one
-  let one_over_z = matrix zero one one zero
+  let j = matrix zero i i zero
+
+  (* floating point equality - since we are normalised then this should
+     be ok *)
+  let almost_equal a b =
+    let d = Float.abs (a -. b) in
+    let limit = 2.0 *. Float.epsilon in
+    d <= limit
 
   (* sign is irrelevant in special group *)
-  let is_normal m = norm2 (determinant m) = Float.one
+  let is_normal m = almost_equal (norm2 (determinant m)) Float.one
 
   (*  general fixed point formula - can simplify if assumed normal *)
 
