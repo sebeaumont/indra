@@ -1,6 +1,5 @@
 (executable
  (public_name indra)
- (name main)
+ (name torture)
  (libraries indra)
  (preprocess (pps ppx_deriving.show)))
-

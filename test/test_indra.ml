@@ -48,6 +48,7 @@ let () =
   assert (M.transform_point m1 CC.infinity = CC.divx m1.a m1.c);
   assert (M.compose m1 M.identity = m1);
   assert (M.compose M.identity m1 = m1);
-  Format.printf "%a\n" CC.pp (M.transform_point m1 (CC.neg (CC.divx m1.c m1.d)));
+  Format.printf "should this be infinity? %a\n" CC.pp
+    (M.transform_point m1 (CC.neg (CC.divx m1.c m1.d)));
 
   Format.printf "OK\n"
