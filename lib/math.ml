@@ -190,7 +190,7 @@ module Group = struct
       |> List.to_seq
       |> String.of_seq in
     let gens = String.cat l (String.uppercase_ascii l) in
-    (* do an anti-clockwise cyclic permuatation so dfs works nicely *)
+    (* do an anti-clockwise cyclic permutation so dfs works nicely *)
     let cycle_ac x =
       let len = String.length x in
       String.init len (function
@@ -199,6 +199,8 @@ module Group = struct
     { generators = cycle_ac gens }
 
   let glen g = String.length g.generators
+
+  (* todo combine these two now *)
   let gcla g i = if i < 0 then glen g + i else i mod glen g
   let goff g = (glen g / 2) - 1 (* glen is always even *)
 
@@ -219,7 +221,7 @@ module Group = struct
       Printf.printf "\n"
     done
 
-  (* lookup transformation for group letter index *)
+  (* TODO: lookup matrix for group letter *)
 
   (* fold depth first over group generators stopping when we reach depth n *)
   let fold_df g n f a =
@@ -228,7 +230,7 @@ module Group = struct
       if d < n then
         for
           (* with next reduced generator *)
-          i = l - 1 to l + 1
+          i = l - goff g to l + goff g
         do
           let k = gcla g i in
           (* apply f on l and accumulator depth first *)
