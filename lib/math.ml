@@ -169,31 +169,78 @@ end
 
 (* -------------------------------------------------------------------------------- *)
 
-
 module Group = struct
   type t = { generators : String.t }
-  
-  (* Nota Bene we rely on a certain ordering of generator letters for
-     adjacent inverse avoidance (a.k.a) reduced form: e.g. aBAb avoids
-     such if we only look to our immediate neighbours and ourselves as
-     valid next letters (cyclically). *)
+
+  (** Nota Bene: We rely on a certain ordering of generator letters for
+      efficient adjacent inverse avoidance in reduced form: e.g. abAB avoids
+      such if we only look to our immediate neighbours and ourselves as valid
+      next letters (cyclically), abcABC etc. However to ensure nice generation
+      behaviour on depth first traversal of the "tree" we cyclically permute the
+      letters anti-clockwise. Whatever nonsense string you give us here this
+      should sort it out. *)
+
+  let make ~letters =
+    let s = String.lowercase_ascii letters in
+    (* sort uniq in dictionary l/c and append the inverses u/c *)
+    let l =
+      String.to_seq s
+      |> List.of_seq
+      |> List.sort_uniq Char.compare
+      |> List.to_seq
+      |> String.of_seq in
+    let gens = String.cat l (String.uppercase_ascii l) in
+    (* do an anti-clockwise cyclic permuatation so dfs works nicely *)
+    let cycle_ac x =
+      let len = String.length x in
+      String.init len (function
+        | 0 -> String.get x 0
+        | n -> String.get x (len - n)) in
+    { generators = cycle_ac gens }
 
   let glen g = String.length g.generators
   let gcla g i = if i < 0 then glen g + i else i mod glen g
+  let goff g = (glen g / 2) - 1 (* glen is always even *)
 
-  let dfs g n =
-    (* keep track of paths for testing *)
+  (* keep track of paths for testing *)
+  let dfs_paths g n =
     let rec explore l d p =
       if d < n then (
         Printf.printf "%s --> " p;
-        for i = l - 1 to l + 1 do
+        (* traverse successors *)
+        for i = l - goff g to l + goff g do
           let k = gcla g i in
-          explore k (d + 1)
+          explore k (d + 1) (* depth first *)
             (String.cat p (String.get g.generators k |> String.make 1))
         done) in
-    (* top level *)
+    (* root level *)
     for r = 0 to glen g - 1 do
       explore r 0 (String.get g.generators r |> String.make 1);
       Printf.printf "\n"
     done
+
+  (* lookup transformation for group letter index *)
+
+  (* fold depth first over group generators stopping when we reach depth n *)
+  let fold_df g n f a =
+    (* starting at generator l *)
+    let rec explore l d a =
+      if d < n then
+        for
+          (* with next reduced generator *)
+          i = l - 1 to l + 1
+        do
+          let k = gcla g i in
+          (* apply f on l and accumulator depth first *)
+          explore k (d + 1) (f l a)
+        done in
+    (* for each generator *)
+    for r = 0 to glen g - 1 do
+      explore r 0 a
+    done;
+    a
+
+  let test n =
+    let g = { generators = "aBAb" } in
+    fold_df g n (fun l t -> Mobius.compose t Mobius.identity) Mobius.j
 end

@@ -1,0 +1,14 @@
+* Benchmarking
+
+** Generating all paths 15 deep for a 2 generator group
+
+short strings consed up and printed mainly i/o bound? output redirected
+stdout to file. 
+
+OCaml is 50% faster than C with Clang-20
+Ocaml is 400% faster than Python with 3.13
+
+** TODO Numerics 
+
+ - Try complex doubles in C (std=c2y) 
+ - vs OCaml Complex module
