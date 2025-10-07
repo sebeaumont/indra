@@ -1,5 +1,5 @@
 open Indra.Math
 
 let () =
-  let g = { Group.generators = "aBAb" } in
-  Group.dfs g 15
+  let g = Group.make [ ('b', Mobius.identity); ('a', Mobius.j) ] in
+  Group.dfs_paths g 15

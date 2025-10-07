@@ -8,7 +8,7 @@ let () =
   let w = { CC.re = -1.714; im = 3.142 } in
   let v = { CC.re = 0.3010; im = 3.142 } in
   let u = { CC.re = -31.42; im = 17.34 } in
-  let m1 = M.map z w v u in
+  let m1 = M.matrix z w v u in
 
   (* basic exteded arithmetic *)
   Format.printf "%s%!" "Divide z by zero...";

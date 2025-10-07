@@ -29,10 +29,15 @@ module ComplexExt = struct
   (* this is how we define ComplexExt.nan *)
   let is_nan (z : Complex.t) = Float.is_nan z.re && Float.is_nan z.re
 
+  (* convenience constructor *)
+  let z r i = { re = r; im = i }
+  let ( ~~ ) = Complex.neg
+  let ( ~. ) = Float.neg
+
   (* nota bene a Float.nan cannot be compared as a number *)
-  let infinity = { re = Float.infinity; im = Float.zero }
-  let nan = { re = Float.nan; im = Float.nan }
-  let f2c f = { re = f; im = Float.zero }
+  let infinity = z Float.infinity Float.zero
+  let nan = z Float.nan Float.nan
+  let f2c f = z f Float.zero
 
   (* extended operations *)
   let divx a b =
@@ -58,10 +63,6 @@ module ComplexExt = struct
   let pp ppf { re; im } =
     let sign = if im >= 0.0 then "+" else "" in
     Format.fprintf ppf "(%f%s%fi)" re sign im
-
-  let as_string { re; im } =
-    let sign = if im >= 0.0 then "+" else "" in
-    "(" ^ Float.to_string re ^ sign ^ Float.to_string im ^ ")"
 end
 
 (* -------------------------------------------------------------------------- *)
@@ -93,9 +94,6 @@ module Mobius = struct
 
   exception Singular
 
-  (* convenience constructor apply normalisation? *)
-  let matrix a b c d = { a; b; c; d }
-
   (* check for singularity and normalise so det = 1 and an acceptable
      element of the PSL(2,C) or Kleinian group *)
   let normalise m =
@@ -105,40 +103,40 @@ module Mobius = struct
       (* could be -ve or +ve and hence special *)
       let uniter = sqrt det in
       {
-        a = div m.a uniter;
-        b = div m.b uniter;
-        c = div m.c uniter;
-        d = div m.d uniter;
+        a = divx m.a uniter;
+        b = divx m.b uniter;
+        c = divx m.c uniter;
+        d = divx m.d uniter;
       }
 
-  (* assumed to have  det 1 from here on *)
-  let map a b c d = normalise @@ matrix a b c d
+  (* convenience constructor apply normalisation *)
+  let matrix a b c d = { a; b; c; d } |> normalise
 
   (* composition is "matrix" multiplication *)
   let compose m1 m2 =
     {
-      a = add (mul m1.a m2.a) (mul m1.b m2.c);
-      b = add (mul m1.a m2.b) (mul m1.b m2.d);
-      c = add (mul m1.c m2.a) (mul m1.d m2.c);
-      d = add (mul m1.c m2.b) (mul m1.d m2.d);
+      a = addx (mulx m1.a m2.a) (mulx m1.b m2.c);
+      b = addx (mulx m1.a m2.b) (mulx m1.b m2.d);
+      c = addx (mulx m1.c m2.a) (mulx m1.d m2.c);
+      d = addx (mulx m1.c m2.b) (mulx m1.d m2.d);
     }
 
-  let trace m = add m.a m.d
+  let trace m = addx m.a m.d
   let inverse m = { m with a = neg m.d; d = neg m.a }
 
   (* transform a point in complex plane *)
   let transform_point m z =
     if z = infinity then divx m.a m.c
-    else divx (add (mul m.a z) m.b) (add (mul m.c z) m.d)
+    else divx (addx (mulx m.a z) m.b) (addx (mulx m.c z) m.d)
 
   (* transform a circle in complex plane *)
   let transform_circle m c =
-    let w = conj (add c.centre (divx m.d m.c)) in
+    let w = conj (addx c.centre (divx m.d m.c)) in
     let r2 = f2c (c.r *. c.r) in
     let z = subx c.centre (divx r2 w) in
     let centre = transform_point m z in
     let radius =
-      norm (sub centre (transform_point m (add c.centre (f2c c.r)))) in
+      norm (subx centre (transform_point m (addx c.centre (f2c c.r)))) in
     { centre; r = radius }
 
   (* useful transformations *)
@@ -155,25 +153,28 @@ module Mobius = struct
   (* sign is irrelevant in special group *)
   let is_normal m = almost_equal (norm2 (determinant m)) Float.one
 
-  (*  general fixed point formula - can simplify if assumed normal *)
+  (* general fixed point formula - simplified assumed normal *)
   let fixed_points m =
+    let alessd = subx m.a m.d in
+    let tr2 = mulx (trace m) (trace m) in
     let four = f2c 4.0 in
-    let dma = sub m.d m.a in
-    let dma2 = mul dma dma in
-    let bc4 = mul four (mul m.b m.c) in
-    let discr = sqrt (add dma2 bc4) in
-    let a_d = sub m.a m.d in
+    let tr2less4 = subx tr2 four in
+    let root2tr2l4 = sqrt tr2less4 in
     let two = f2c 2.0 in
-    let two_c = mul two m.c in
-    let r1 = divx (sub a_d discr) two_c in
-    let r2 = divx (add a_d discr) two_c in
+    let two_c = mulx two m.c in
+    let r1 = divx (subx alessd root2tr2l4) two_c in
+    let r2 = divx (addx alessd root2tr2l4) two_c in
     (r1, r2)
 end
 
 (* -------------------------------------------------------------------------------- *)
 
 module Group = struct
-  type t = { generators : String.t; transformations : Mobius.t array }
+  type t = {
+    generators : String.t;
+    transformations : Mobius.t array;
+    fixpoints : (ComplexExt.t * ComplexExt.t) array;
+  }
 
   (** Nota Bene: We rely on a certain ordering of generator letters for
       efficient adjacent inverse avoidance in reduced form: e.g. "abAB" avoids
@@ -209,14 +210,15 @@ module Group = struct
       String.init len (function
         | 0 -> String.get x 0
         | n -> String.get x (len - n)) in
-    let gens = cycle_ac gdict in
     (* build array of transformations in permuted order for O(1) lookups *)
-    {
-      generators = gens;
-      transformations =
-        Array.init (String.length gens) (fun i ->
-            List.assoc (String.get gens i) mmap);
-    }
+    let gens = cycle_ac gdict in
+    let mtrx =
+      Array.init (String.length gens) (fun i ->
+          List.assoc (String.get gens i) mmap) in
+    let fixp =
+      Array.init (Array.length mtrx) (fun i -> Mobius.fixed_points mtrx.(i))
+    in
+    { generators = gens; transformations = mtrx; fixpoints = fixp }
 
   (* utilities TODO rationalise *)
   let glen g = String.length g.generators
@@ -225,6 +227,8 @@ module Group = struct
   let gcla g i = if i < 0 then glen g + i else i mod glen g
   let goff g = (glen g / 2) - 1 (* glen is always even *)
   let transformation g l = g.transformations.(l)
+  let multiply_left g l t = Mobius.compose g.transformations.(l) t
+  let multiply_right g l t = Mobius.compose t g.transformations.(l)
 
   (* keep track of paths for testing *)
   let dfs_paths g n =
