@@ -1,5 +1,5 @@
 (* Math for Indra's pearls and all things to be found in the complex plane
-   Copyleft 2025 Simon Beaumont, Newport, England *)
+   Copyleft 2025 Simon Beaumont, IoW, England *)
 
 (* -------------------------------------------------------------------------- *)
 
@@ -25,10 +25,6 @@ module ComplexExt = struct
    *)
 
   include Complex
-
-  let pp ppf { re; im } =
-    let sign = if im >= 0.0 then "+" else "" in
-    Format.fprintf ppf "(%f%s%fi)" re sign im
 
   (* this is how we define ComplexExt.nan *)
   let is_nan (z : Complex.t) = Float.is_nan z.re && Float.is_nan z.re
@@ -58,6 +54,14 @@ module ComplexExt = struct
     if a <> zero then if b = infinity then infinity else mul a b
     else if b = infinity then nan
     else mul a b
+
+  let pp ppf { re; im } =
+    let sign = if im >= 0.0 then "+" else "" in
+    Format.fprintf ppf "(%f%s%fi)" re sign im
+
+  let as_string { re; im } =
+    let sign = if im >= 0.0 then "+" else "" in
+    "(" ^ Float.to_string re ^ sign ^ Float.to_string im ^ ")"
 end
 
 (* -------------------------------------------------------------------------- *)
@@ -77,7 +81,6 @@ module Mobius = struct
   open Geometry
 
   (* representation of a Mobius tranformation *)
-
   type t = {
     a : ComplexExt.t;
     b : ComplexExt.t;
@@ -170,39 +173,58 @@ end
 (* -------------------------------------------------------------------------------- *)
 
 module Group = struct
-  type t = { generators : String.t }
+  type t = { generators : String.t; transformations : Mobius.t array }
 
   (** Nota Bene: We rely on a certain ordering of generator letters for
-      efficient adjacent inverse avoidance in reduced form: e.g. abAB avoids
+      efficient adjacent inverse avoidance in reduced form: e.g. "abAB" avoids
       such if we only look to our immediate neighbours and ourselves as valid
-      next letters (cyclically), abcABC etc. However to ensure nice generation
-      behaviour on depth first traversal of the "tree" we cyclically permute the
-      letters anti-clockwise. Whatever nonsense string you give us here this
-      should sort it out. *)
+      next letters (cyclically). However to ensure nice generation behaviour on
+      depth first traversal of the "tree" we cyclically permute the letters
+      anti-clockwise to get "aBAb". Whatever you give us here this should
+      provide something at least useable but as this was intended to be a two
+      generator group then the default "ab" is common usage. *)
 
-  let make ~letters =
-    let s = String.lowercase_ascii letters in
-    (* sort uniq in dictionary l/c and append the inverses u/c *)
+  let make groupspec =
+    let keys, txs = List.split groupspec in
+    let ivs = List.map Mobius.inverse txs in
+    let letk = List.map Char.lowercase_ascii keys in
+    let invk = List.map Char.uppercase_ascii keys in
+
+    (* build new assoc list with inverses added in given order *)
+    let mmap = List.combine (List.append letk invk) (List.append txs ivs) in
+
+    (* rationalise the letters and do cyclic permutation with inverses *)
+    let letters = List.to_seq keys |> String.of_seq in
+    (* sort uniq in dictionary l/c and append the inverse letters *)
     let l =
-      String.to_seq s
+      String.to_seq letters
       |> List.of_seq
       |> List.sort_uniq Char.compare
       |> List.to_seq
       |> String.of_seq in
-    let gens = String.cat l (String.uppercase_ascii l) in
+    let gdict = String.cat l (String.uppercase_ascii l) in
     (* do an anti-clockwise cyclic permutation so dfs works nicely *)
     let cycle_ac x =
       let len = String.length x in
       String.init len (function
         | 0 -> String.get x 0
         | n -> String.get x (len - n)) in
-    { generators = cycle_ac gens }
+    let gens = cycle_ac gdict in
+    (* build array of transformations in permuted order for O(1) lookups *)
+    {
+      generators = gens;
+      transformations =
+        Array.init (String.length gens) (fun i ->
+            List.assoc (String.get gens i) mmap);
+    }
 
+  (* utilities TODO rationalise *)
   let glen g = String.length g.generators
 
   (* todo combine these two now *)
   let gcla g i = if i < 0 then glen g + i else i mod glen g
   let goff g = (glen g / 2) - 1 (* glen is always even *)
+  let transformation g l = g.transformations.(l)
 
   (* keep track of paths for testing *)
   let dfs_paths g n =
@@ -223,17 +245,35 @@ module Group = struct
 
   (* TODO: lookup matrix for group letter *)
 
-  (* fold depth first over group generators stopping when we reach depth n *)
-  let fold_df g n f a =
-    (* starting at generator l *)
+  (** Fold depth first over group generators stopping when we reach maxdepth
+      also provide for a halting predicate which is applied to the result of
+      applying the accumulated transformation to the relevant fixed point for
+      the current generator, (maxdepth may need to be large in this case). *)
+
+  (* we need one function to compute the operator, usually by composing
+     tranformations on the left as we explore the group tree and another
+     action on the result... *)
+
+  let action f r = f r
+
+  let fold_df ~group:g ~maxdepth:n
+      ?until:(p =
+          function
+          | _ -> false)
+      (*
+        ?operator:(m = Mobius.compose)
+        ?action:(r = fun o -> a
+   *)
+        f a =
+    (* explore tree starting at generator l *)
     let rec explore l d a =
-      if d < n then
+      if d < n || p a then
         for
           (* with next reduced generator *)
           i = l - goff g to l + goff g
         do
           let k = gcla g i in
-          (* apply f on l and accumulator depth first *)
+          (* apply f on l, transform and result accumulators *)
           explore k (d + 1) (f l a)
         done in
     (* for each generator *)
@@ -241,8 +281,4 @@ module Group = struct
       explore r 0 a
     done;
     a
-
-  let test n =
-    let g = { generators = "aBAb" } in
-    fold_df g n (fun l t -> Mobius.compose t Mobius.identity) Mobius.j
 end
