@@ -65,6 +65,14 @@
   a complex projective space and can be thought of as the complex projective
   line <math|\<b-P\><rsup|1><around*|(|\<b-C\>|)>>.
 
+  Among those rules some other equations regarding the value of a
+  transformation at infinity is give on page 70, the authors omit the real
+  story here and the relevant equation should have been stated:
+
+  <\equation*>
+    T<around*|(|\<infty\>|)>=<below|lim|z\<rightarrow\>\<infty\>><suppressed|<explicit-space>><dfrac|a*z+b|c*z+d>=<below|lim|z\<rightarrow\>\<infty\>><suppressed|<explicit-space>><dfrac|a+b/\<infty\>|c+d/\<infty\>>=<frac|a|c>
+  </equation*>
+
   <section|The Kleinian Group>
 
   It turns out that the group of automorphism of the Riemann sphere, (which
@@ -79,6 +87,8 @@
   of the 2 by 2 matrices of determinant 1 by their <em|centre>. Thus a
   Kleinian group can be defined as a subgroup <math|\<Gamma\>> of
   <math|PGL<around*|(|2,C|)>> acting on one of these spaces.
+
+  \;
 
   \ 
 
@@ -126,7 +136,7 @@
   <\collection>
     <associate|auto-1|<tuple|1|1>>
     <associate|auto-2|<tuple|2|1>>
-    <associate|auto-3|<tuple|3|1>>
+    <associate|auto-3|<tuple|3|2>>
     <associate|auto-4|<tuple|3|2>>
     <associate|bib-mumford2002|<tuple|1|2>>
     <associate|footnote-1|<tuple|1|1>>
