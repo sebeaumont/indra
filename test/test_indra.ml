@@ -2,6 +2,10 @@ open Indra.Math
 module CC = ComplexExt
 module M = Mobius
 
+let pad ?(n = 40) ?(c = '.') s =
+  let slen = String.length s in
+  if slen < n then s ^ String.make (n - slen) c else s
+
 (* the most basic tests ever *)
 let () =
   let z = { CC.re = 1.714; im = -1.234 } in
@@ -11,7 +15,7 @@ let () =
   let m1 = M.matrix z w v u in
 
   (* basic exteded arithmetic *)
-  Format.printf "%s%!" "Divide z by zero...";
+  Format.printf "%s%!" (pad "Divide z by zero");
   assert (CC.divx z CC.zero = CC.infinity);
   assert (CC.divx w CC.zero = CC.infinity);
   assert (CC.divx v CC.zero = CC.infinity);
@@ -20,19 +24,19 @@ let () =
   assert (CC.is_nan (CC.divx CC.infinity CC.infinity));
   Format.printf "OK\n";
 
-  Format.printf "%s%!" "Adding infinity...";
+  Format.printf "%s%!" (pad "Adding infinity");
   assert (CC.addx z CC.infinity = CC.infinity);
   assert (CC.addx CC.infinity z = CC.infinity);
   assert (CC.is_nan (CC.addx CC.infinity CC.infinity));
   Format.printf "OK\n";
 
-  Format.printf "%s%!" "Subtracting infinity...";
+  Format.printf "%s%!" (pad "Subtracting infinity");
   assert (CC.subx z CC.infinity = CC.infinity);
   assert (CC.subx CC.infinity z = CC.infinity);
   assert (CC.is_nan (CC.subx CC.infinity CC.infinity));
   Format.printf "OK\n";
 
-  Format.printf "%s%!" "Multiply z by infinity...";
+  Format.printf "%s%!" (pad "Multiply z by infinity");
   assert (CC.mulx z CC.infinity = CC.infinity);
   assert (CC.mulx w CC.infinity = CC.infinity);
   assert (CC.mulx v CC.infinity = CC.infinity);
@@ -43,12 +47,11 @@ let () =
   assert (CC.is_nan (CC.mulx CC.zero CC.infinity));
   Format.printf "OK\n";
 
-  Format.printf "%s%!" "Mobius invariants...";
+  Format.printf "%s%!" (pad "Mobius invariants");
   assert (M.is_normal m1);
   assert (M.transform_point m1 CC.infinity = CC.divx m1.a m1.c);
   assert (M.compose m1 M.identity = m1);
   assert (M.compose M.identity m1 = m1);
-  Format.printf "should this be infinity? %a\n" CC.pp
-    (M.transform_point m1 (CC.neg (CC.divx m1.c m1.d)));
+  assert (M.transform_point m1 (CC.neg (CC.divx m1.d m1.c)) = CC.infinity);
 
   Format.printf "OK\n"

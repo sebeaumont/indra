@@ -39,6 +39,15 @@ module ComplexExt = struct
   let nan = z Float.nan Float.nan
   let f2c f = z f Float.zero
 
+  (* floating point equality - since we are normalised then this should
+     be ok for big enough eps *)
+  let almost_equal ?(eps = Float.epsilon) a b =
+    let d = Float.abs (a -. b) in
+    d <= eps
+
+  let almost_zero ?(eps = 4.0 *. Float.epsilon) { re; im } =
+    almost_equal ~eps re 0.0 && almost_equal ~eps im 0.0
+
   (* extended operations *)
   let divx a b =
     if a <> zero then if b <> zero then div a b else infinity
@@ -59,6 +68,10 @@ module ComplexExt = struct
     if a <> zero then if b = infinity then infinity else mul a b
     else if b = infinity then nan
     else mul a b
+
+  let to_string { re; im } =
+    let sign = if im >= 0.0 then "+" else "" in
+    "(" ^ Float.to_string re ^ sign ^ Float.to_string im ^ "i)"
 
   let pp ppf { re; im } =
     let sign = if im >= 0.0 then "+" else "" in
@@ -127,7 +140,10 @@ module Mobius = struct
   (* transform a point in complex plane *)
   let transform_point m z =
     if z = infinity then divx m.a m.c
-    else divx (addx (mulx m.a z) m.b) (addx (mulx m.c z) m.d)
+    else
+      let num = addx (mulx m.a z) m.b in
+      let den = addx (mulx m.c z) m.d in
+      if almost_zero den then infinity else divx num den
 
   (* transform a circle in complex plane *)
   let transform_circle m c =
@@ -142,13 +158,6 @@ module Mobius = struct
   (* useful transformations *)
   let identity = matrix one zero zero one
   let j = matrix zero i i zero
-
-  (* floating point equality - since we are normalised then this should
-     be ok *)
-  let almost_equal a b =
-    let d = Float.abs (a -. b) in
-    let limit = 2.0 *. Float.epsilon in
-    d <= limit
 
   (* sign is irrelevant in special group *)
   let is_normal m = almost_equal (norm2 (determinant m)) Float.one
