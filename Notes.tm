@@ -70,7 +70,7 @@
   story here and the relevant equation should have been stated:
 
   <\equation*>
-    T<around*|(|\<infty\>|)>=<below|lim|z\<rightarrow\>\<infty\>><suppressed|<explicit-space>><dfrac|a*z+b|c*z+d>=<below|lim|z\<rightarrow\>\<infty\>><suppressed|<explicit-space>><dfrac|a+b/\<infty\>|c+d/\<infty\>>=<frac|a|c>
+    T<around*|(|\<infty\>|)>=<below|lim|z\<rightarrow\>\<infty\>><dfrac|a*z+b|c*z+d>=<below|lim|z\<rightarrow\>\<infty\>><dfrac|a+b/\<infty\>|c+d/\<infty\>>=<frac|a|c>
   </equation*>
 
   <section|The Kleinian Group>
