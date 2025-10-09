@@ -2,4 +2,6 @@
  (dev 
    (flags (:standard -w +a-40-42..45)))
  (release
-  (ocamlopt_flags (:standard -O3))))
+  (ocamlopt_flags (:standard -O3)))
+ (debug
+  (flags (:standard -w -a))))

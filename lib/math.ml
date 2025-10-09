@@ -174,6 +174,18 @@ module Mobius = struct
     let r1 = divx (subx alessd root2tr2l4) two_c in
     let r2 = divx (addx alessd root2tr2l4) two_c in
     (r1, r2)
+
+  (* printer *)
+  let to_string { a; b; c; d } =
+    "\n|"
+    ^ to_string a
+    ^ "; "
+    ^ to_string b
+    ^ "|\n|"
+    ^ to_string c
+    ^ "; "
+    ^ to_string d
+    ^ "|\n"
 end
 
 (* -------------------------------------------------------------------------------- *)
