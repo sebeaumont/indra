@@ -71,7 +71,7 @@ module ComplexExt = struct
 
   let to_string { re; im } =
     let sign = if im >= 0.0 then "+" else "" in
-    "(" ^ Float.to_string re ^ sign ^ Float.to_string im ^ "i)"
+    Printf.sprintf "(%.4G%s%.4Gi)" re sign im
 
   let pp ppf { re; im } =
     let sign = if im >= 0.0 then "+" else "" in
@@ -105,13 +105,13 @@ module Mobius = struct
   (* determinant of 2x2 complex matrix *)
   let determinant m = sub (mul m.a m.d) (mul m.b m.c)
 
-  exception Singular
+  exception Singular of t
 
   (* check for singularity and normalise so det = 1 and an acceptable
      element of the PSL(2,C) or Kleinian group *)
   let normalise m =
     let det = determinant m in
-    if det = zero then raise Singular
+    if det = zero then raise (Singular m)
     else
       (* could be -ve or +ve and hence special *)
       let uniter = sqrt det in
@@ -125,7 +125,8 @@ module Mobius = struct
   (* convenience constructor apply normalisation *)
   let matrix a b c d = { a; b; c; d } |> normalise
 
-  (* composition is "matrix" multiplication *)
+  (* composition is "matrix" multiplication under the advice of my
+   assistant we are going to use QR decomosition to *)
   let compose m1 m2 =
     {
       a = addx (mulx m1.a m2.a) (mulx m1.b m2.c);
@@ -133,6 +134,7 @@ module Mobius = struct
       c = addx (mulx m1.c m2.a) (mulx m1.d m2.c);
       d = addx (mulx m1.c m2.b) (mulx m1.d m2.d);
     }
+  (* |> normalise should not be necessary but causus test failure! *)
 
   let trace m = addx m.a m.d
   let inverse m = { m with a = neg m.d; d = neg m.a }

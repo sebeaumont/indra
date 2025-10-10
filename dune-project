@@ -5,25 +5,26 @@
 (generate_opam_files true)
 
 (source
- (github username/reponame))
+ (github sebeaumont/indra))
 
-(authors "Author Name <author@example.com>")
+(authors "Simon Beaumont <typetyro@icloud.com>")
 
-(maintainers "Maintainer Name <maintainer@example.com>")
+(maintainers "Hackman <datalligator@icloud.com>")
 
-(license LICENSE)
+(license GPL-3.0-or-later)
 
 (documentation https://url/to/documentation)
 
 (package
  (name indra)
- (synopsis "A short synopsis")
- (description "A longer description")
+ (synopsis "Learning OCaml one complex function at a time")
+ (description "Mobius tranformations broke my abacus!")
  (depends ocaml
           owl
           owl-top
           ocaml-canvas
-          ppx_deriving)
+          ppx_deriving
+  (alcotest :with-test))
  (tags
-  ("add topics" "to describe" your project)))
+  ("Kleinian Groups" "Maths" indra)))
 

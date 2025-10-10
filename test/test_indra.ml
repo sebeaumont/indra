@@ -100,6 +100,6 @@ let () =
     (* some iterations *)
     for _ = 0 to 20 do
       t := M.compose !t !t;
-      Format.printf "%s\n" (CC.to_string (M.transform_point !t z))
+      Format.printf "%s\n" (M.to_string !t)
     done in
   bar
