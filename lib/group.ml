@@ -1,0 +1,116 @@
+(* grouds and generators *)
+
+type t = {
+  generators : String.t;
+  transformations : Mobius.t array;
+  fixpoints : (Complex.t * Complex.t) array;
+}
+
+(** Nota Bene: We rely on a certain ordering of generator letters for efficient
+    adjacent inverse avoidance in reduced form: e.g. "abAB" avoids such if we
+    only look to our immediate neighbours and ourselves as valid next letters
+    (cyclically). However to ensure nice generation behaviour on depth first
+    traversal of the "tree" we cyclically permute the letters anti-clockwise to
+    get "aBAb". Whatever you give us here this should provide something at least
+    useable but as this was intended to be a two generator group then the
+    default "ab" is common usage. *)
+
+let make groupspec =
+  let keys, txs = List.split groupspec in
+  let ivs = List.map Mobius.inverse txs in
+  let letk = List.map Char.lowercase_ascii keys in
+  let invk = List.map Char.uppercase_ascii keys in
+
+  (* build new assoc list with inverses added in given order *)
+  let mmap = List.combine (List.append letk invk) (List.append txs ivs) in
+
+  (* rationalise the letters and do cyclic permutation with inverses *)
+  let letters = List.to_seq keys |> String.of_seq in
+  (* sort uniq in dictionary l/c and append the inverse letters *)
+  let l =
+    String.to_seq letters
+    |> List.of_seq
+    |> List.sort_uniq Char.compare
+    |> List.to_seq
+    |> String.of_seq in
+  let gdict = String.cat l (String.uppercase_ascii l) in
+  (* do an anti-clockwise cyclic permutation so dfs works nicely *)
+  let cycle_ac x =
+    let len = String.length x in
+    String.init len (function
+      | 0 -> String.get x 0
+      | n -> String.get x (len - n)) in
+  (* build array of transformations in permuted order for O(1) lookups *)
+  let gens = cycle_ac gdict in
+  let mtrx =
+    Array.init (String.length gens) (fun i ->
+        List.assoc (String.get gens i) mmap) in
+  let fixp =
+    Array.init (Array.length mtrx) (fun i -> Mobius.fixed_points mtrx.(i)) in
+  { generators = gens; transformations = mtrx; fixpoints = fixp }
+
+(* utilities TODO rationalise *)
+let glen g = String.length g.generators
+
+(* todo combine these two now *)
+let gcla g i = if i < 0 then glen g + i else i mod glen g
+let goff g = (glen g / 2) - 1 (* glen is always even *)
+let transformation g l = g.transformations.(l)
+let multiply_left g l t = Mobius.compose g.transformations.(l) t
+let multiply_right g l t = Mobius.compose t g.transformations.(l)
+
+(* keep track of paths for testing *)
+let dfs_paths g n =
+  let rec explore l d p =
+    if d < n then (
+      Printf.printf "%s --> " p;
+      (* traverse successors *)
+      for i = l - goff g to l + goff g do
+        let k = gcla g i in
+        explore k (d + 1) (* depth first *)
+          (String.cat p (String.get g.generators k |> String.make 1))
+      done) in
+  (* root level *)
+  for r = 0 to glen g - 1 do
+    explore r 0 (String.get g.generators r |> String.make 1);
+    Printf.printf "\n"
+  done
+
+(* TODO: lookup matrix for group letter *)
+
+(** Fold depth first over group generators stopping when we reach maxdepth also
+    provide for a halting predicate which is applied to the result of applying
+    the accumulated transformation to the relevant fixed point for the current
+    generator, (maxdepth may need to be large in this case). *)
+
+(* we need one function to compute the operator, usually by composing
+     tranformations on the left as we explore the group tree and another
+     action on the result... *)
+
+let action f r = f r
+
+let fold_df ~group:g ~maxdepth:n
+    ?until:(p =
+        function
+        | _ -> false)
+    (*
+        ?operator:(m = Mobius.compose)
+        ?action:(r = fun o -> a
+   *)
+      f a =
+  (* explore tree starting at generator l *)
+  let rec explore l d a =
+    if d < n || p a then
+      for
+        (* with next reduced generator *)
+        i = l - goff g to l + goff g
+      do
+        let k = gcla g i in
+        (* apply f on l, transform and result accumulators *)
+        explore k (d + 1) (f l a)
+      done in
+  (* for each generator *)
+  for r = 0 to glen g - 1 do
+    explore r 0 a
+  done;
+  a

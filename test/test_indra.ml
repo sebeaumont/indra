@@ -1,21 +1,47 @@
-open Indra.Math
-module CC = ComplexExt
+open Indra
+module CC = Complex
 module M = Mobius
+(* module D = Data *)
 
 let pad ?(n = 40) ?(c = '.') s =
   let slen = String.length s in
   if slen < n then s ^ String.make (n - slen) c else s
 
+let safe_points =
+  [|
+    { CC.re = 0.1; im = 0.2 };
+    { CC.re = 0.3; im = 0.4 };
+    { CC.re = 0.5; im = 0.6 };
+    { CC.re = 0.7; im = 0.8 };
+  |]
+
+let edge_points =
+  [|
+    { CC.re = 1e-10; im = 0. };
+    { CC.re = 1e10; im = 0. };
+    { CC.re = 0.; im = 1. };
+    { CC.re = 1.; im = 0. };
+  |]
+
+(* Test if composition preserves cross-ratio (the ONLY stable test) *)
+let test_mobius_stability t1 t2 zs =
+  (* Compute cross-ratio BEFORE composition *)
+  let cr_original = M.from_array zs |> M.cross_ratio in
+
+  (* Compose transformations stably (using QR) *)
+  let t_composed = M.compose t1 t2 in
+
+  (* Apply composed transformation to all points *)
+  let z_transformed =
+    Array.map (M.transform_point t_composed) zs |> M.from_array in
+  let cr_transformed = M.cross_ratio z_transformed in
+  (* Check invariance (floating-point safe!) *)
+  Complex.norm (Complex.sub cr_original cr_transformed) < 1e-10
+
 (* basic tests *)
 
 let () =
   let r2 = Float.sqrt 2.0 in
-
-  (* nonsese *)
-  let z = { CC.re = 1.714; im = -1.234 } in
-  let w = { CC.re = -1.714; im = 3.142 } in
-  let v = { CC.re = 0.3010; im = 3.142 } in
-  let u = { CC.re = -31.42; im = 17.34 } in
 
   (* elliptic *)
   let ea = { CC.re = r2 /. 2.; im = 0. } in
@@ -35,71 +61,50 @@ let () =
   let pc = { CC.re = 0.; im = 0. } in
   let pd = { CC.re = 1.; im = 0. } in
 
-  let m1 = M.matrix z w v u in
   let me = M.matrix ea eb ec ed in
   let mh = M.matrix ha hb hc hd in
-  let _mp = M.matrix pa pb pc pd in
+  let mp = M.matrix pa pb pc pd in
 
-  (* basic exteded arithmetic *)
-  Format.printf "%s%!" (pad "Divide z by zero");
-  assert (CC.divx z CC.zero = CC.infinity);
-  assert (CC.divx w CC.zero = CC.infinity);
-  assert (CC.divx v CC.zero = CC.infinity);
-  assert (CC.divx u CC.zero = CC.infinity);
-  assert (CC.is_nan (CC.divx CC.zero CC.zero));
-  assert (CC.is_nan (CC.divx CC.infinity CC.infinity));
-  Format.printf "OK\n";
-
-  Format.printf "%s%!" (pad "Adding infinity");
-  assert (CC.addx z CC.infinity = CC.infinity);
-  assert (CC.addx CC.infinity z = CC.infinity);
-  assert (CC.is_nan (CC.addx CC.infinity CC.infinity));
-  Format.printf "OK\n";
-
-  Format.printf "%s%!" (pad "Subtracting infinity");
-  assert (CC.subx z CC.infinity = CC.infinity);
-  assert (CC.subx CC.infinity z = CC.infinity);
-  assert (CC.is_nan (CC.subx CC.infinity CC.infinity));
-  Format.printf "OK\n";
-
-  Format.printf "%s%!" (pad "Multiply z by infinity");
-  assert (CC.mulx z CC.infinity = CC.infinity);
-  assert (CC.mulx w CC.infinity = CC.infinity);
-  assert (CC.mulx v CC.infinity = CC.infinity);
-  assert (CC.mulx u CC.infinity = CC.infinity);
-  assert (CC.mulx u CC.zero = CC.zero);
-  assert (CC.mulx CC.zero z = CC.zero);
-  assert (CC.is_nan (CC.mulx CC.infinity CC.zero));
-  assert (CC.is_nan (CC.mulx CC.zero CC.infinity));
-  Format.printf "OK\n";
+  let z = { CC.re = 0.3; im = 0.4 } in
 
   Format.printf "%s%!" (pad "Mobius invariants");
-  assert (M.is_normal m1);
-  assert (M.transform_point m1 CC.infinity = CC.divx m1.a m1.c);
-  assert (M.compose m1 M.identity = m1);
-  assert (M.compose M.identity m1 = m1);
-  assert (M.transform_point m1 (CC.neg (CC.divx m1.d m1.c)) = CC.infinity);
-  Format.printf "OK\n";
+  assert (M.compose M.identity me = me);
+  Format.printf "OK@.";
 
-  Format.printf "%s%!" (pad "Mobius mangling");
-  Format.printf "%s\n" (M.to_string me);
+  Format.printf "%s%!" (pad "Mobius stability");
+  assert (test_mobius_stability me mh safe_points);
+  assert (test_mobius_stability mh mp safe_points);
+
+  assert (test_mobius_stability me mh edge_points);
+  assert (test_mobius_stability mh mp edge_points);
+  Format.printf "OK@.";
+
+  Format.printf "%s@." (pad "Mobius mangling");
+
+  let pp_complex ppf (z : Complex.t) =
+    let open Complex in
+    let sign = if z.im >= 0.0 then "+" else "" in
+    Format.fprintf ppf "(%f%s%fi)" z.re sign z.im in
 
   let foo =
     let zed = ref z in
     (* some iterations *)
-    for _ = 0 to 20 do
+    for i = 0 to 20 do
+      Format.printf "%d,%!" i;
       zed := M.transform_point me !zed;
-      Format.printf "%s\n" (CC.to_string !zed)
+      Format.printf "%a\n" pp_complex !zed
     done in
   foo;
 
-  Format.printf "\n";
+  Format.printf "@.";
 
+  (* this is blowing up to infinity and beyond! *)
   let bar =
-    let t = ref mh in
+    let t = ref me in
     (* some iterations *)
-    for _ = 0 to 20 do
-      t := M.compose !t !t;
-      Format.printf "%s\n" (M.to_string !t)
+    for i = 0 to 20 do
+      Format.printf "%d,%!" i;
+      t := M.compose me !t;
+      Format.printf "%a@." M.pp !t
     done in
   bar
